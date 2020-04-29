@@ -1,5 +1,3 @@
-local players = {}
-
 local PingSystem
 do
     PingSystem = { }
