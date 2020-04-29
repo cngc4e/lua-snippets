@@ -21,7 +21,8 @@ do
     function PingSystem:new()
         return setmetatable({
             players = {},
-            callback = nil
+            packet_received_callback = nil,
+            results_callback = nil
         }, self)
     end
 
@@ -40,8 +41,12 @@ do
         self.players[pn] = nil
     end
 
-    function PingSystem:setCallback(cb)
-        self.callback = cb
+    function PingSystem:setPacketReceivedCallback(cb)
+        self.packet_received_callback = cb
+    end
+
+    function PingSystem:setResultsCallback(cb)
+        self.results_callback = cb
     end
 
     -- To be hooked on to eventLoop
@@ -65,22 +70,31 @@ do
         if player and player.is_awaiting_packet then
             local now_epoch = os.time()
             local time_ms = (now_epoch - player.packet_sent_time)
-            print(pn..": "..time_ms.."ms")
+            if self.packet_received_callback then
+                self.packet_received_callback(pn, time_ms)
+            end
             player.packet_received_time = now_epoch
             player.tests[player.tests._count + 1] = time_ms
             player.tests._count = player.tests._count + 1
             player.is_awaiting_packet = false
             if player.tests._count == player.max_tests_count then
                 -- end of test
+                if self.results_callback then
+                    self.results_callback(pn, tests_results(player.tests))
+                end
                 self:removePlayer(pn)
-                local result = tests_results(player.tests)
-                print(pn.."'s Average: "..result.average.."ms, Lowest: "..result.lowest.."ms, Highest: "..result.highest.."ms")
             end
         end
     end
 end
 
 local ps = PingSystem:new()
+ps:setPacketReceivedCallback(function(pn, time_ms)
+    print(pn..": "..time_ms.."ms")
+end)
+ps:setResultsCallback(function(pn, result)
+    print(pn.."'s Average: "..result.average.."ms, Lowest: "..result.lowest.."ms, Highest: "..result.highest.."ms")
+end)
 function eventLoop()
     ps:sendPackets()
 end
