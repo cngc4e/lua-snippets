@@ -88,6 +88,9 @@ do
     end
 end
 
+----------------------
+--- sample usage of the PingSystem class
+----------------------
 local ps = PingSystem:new()
 ps:setPacketReceivedCallback(function(pn, time_ms)
     print(pn..": "..time_ms.."ms")
@@ -101,12 +104,22 @@ end
 function eventPlayerGetCheese(pn)
     ps:receivePacket(pn)
 end
+function eventPlayerLeft(pn)
+    ps:removePlayer(pn)
+end
 
 local function init()
     for _,v in ipairs({'AfkDeath','AutoNewGame','AutoScore','AutoShaman','AutoTimeLeft','PhysicalConsumables'}) do
         tfm.exec['disable'..v](true)
     end
     system.disableChatCommandDisplay(nil,true)
+end
+
+local function pFind(target)
+	local ign = string.lower(target or ' ')
+	for name in pairs(tfm.get.room.playerList) do
+		if string.lower(name):find(ign) then return name end
+	end
 end
 
 function eventChatCommand(pn, msg)
@@ -117,7 +130,15 @@ function eventChatCommand(pn, msg)
     end
     if args[1] == 'ping' then
         tfm.exec.removeCheese(pn)
-        ps:addPlayer(pn, tonumber(args[2]))
+        local target, tries = pn, tonumber(args[2])
+        if #args >= 2 and not tries then
+            local p = pFind(args[2])
+            if p then  -- pinging others
+                target = p
+                tries = tonumber(args[3])
+            end
+        end
+        ps:addPlayer(target, tries)
     end
 end
 
