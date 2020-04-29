@@ -5,6 +5,8 @@ do
     PingSystem = { }
     PingSystem.__index = PingSystem
 
+    local send_delay_threshold_ms = 0 -- a delay after which the next packet can be sent again after receiving one. used to prevent race causing cheese not getting removed in time.
+
     local tests_results = function(numtbl)
         local sum, lowest, highest, cnt = 0, numtbl[1], numtbl[1], numtbl._count
         for i = 1, cnt do
@@ -31,7 +33,8 @@ do
             max_tests_count = test_counts,
             tests = { _count = 0 },
             is_awaiting_packet = false,
-            packet_sent_time = nil
+            packet_sent_time = nil,
+            packet_received_time = nil
         }
     end
 
@@ -48,9 +51,11 @@ do
         local now_epoch = os.time()
         for name, player in pairs(self.players) do
             if not player.is_awaiting_packet then
-                tfm.exec.movePlayer(name, 388, 278)  -- tp to cheese
-                player.packet_sent_time = now_epoch
-                player.is_awaiting_packet = true
+                if not player.packet_received_time or now_epoch - player.packet_received_time >= send_delay_threshold_ms then
+                    tfm.exec.movePlayer(name, 388, 278)  -- tp to cheese
+                    player.packet_sent_time = now_epoch
+                    player.is_awaiting_packet = true
+                end
             end
         end
     end
@@ -59,17 +64,19 @@ do
     function PingSystem:receivePacket(pn)
         local player = self.players[pn]
         if player and player.is_awaiting_packet then
-            local time_ms = (os.time() - player.packet_sent_time)
+            local now_epoch = os.time()
+            local time_ms = (now_epoch - player.packet_sent_time)
             print(pn..": "..time_ms.."ms")
+            player.packet_received_time = now_epoch
             player.tests[player.tests._count + 1] = time_ms
             player.tests._count = player.tests._count + 1
-            player.is_awaiting_packet = false
             tfm.exec.removeCheese(pn)
+            player.is_awaiting_packet = false
             if player.tests._count == player.max_tests_count then
                 -- end of test
                 self:removePlayer(pn)
                 local result = tests_results(player.tests)
-                print(pn.."'s Average: "..result.average.."ms, Lowest: "..result.lowest.."ms, Highest: "..result.highest)
+                print(pn.."'s Average: "..result.average.."ms, Lowest: "..result.lowest.."ms, Highest: "..result.highest.."ms")
             end
         end
     end
