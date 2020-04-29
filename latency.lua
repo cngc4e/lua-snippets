@@ -52,6 +52,7 @@ do
         for name, player in pairs(self.players) do
             if not player.is_awaiting_packet then
                 if not player.packet_received_time or now_epoch - player.packet_received_time >= send_delay_threshold_ms then
+                    tfm.exec.removeCheese(name)
                     tfm.exec.movePlayer(name, 388, 278)  -- tp to cheese
                     player.packet_sent_time = now_epoch
                     player.is_awaiting_packet = true
@@ -70,7 +71,6 @@ do
             player.packet_received_time = now_epoch
             player.tests[player.tests._count + 1] = time_ms
             player.tests._count = player.tests._count + 1
-            tfm.exec.removeCheese(pn)
             player.is_awaiting_packet = false
             if player.tests._count == player.max_tests_count then
                 -- end of test
