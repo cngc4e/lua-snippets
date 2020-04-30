@@ -48,13 +48,12 @@ do
 
     -- To be hooked on to eventLoop
     local function send_packets()
-        local now_epoch = os_time()
         for name, player in pairs(players) do
             if not player.is_awaiting_packet then
-                if not player.packet_received_time or now_epoch - player.packet_received_time >= send_delay_threshold_ms then
+                if not player.packet_received_time or os_time() - player.packet_received_time >= send_delay_threshold_ms then
                     tfm_exec_removeCheese(name)
                     tfm_exec_movePlayer(name, 388, 278)  -- tp to cheese
-                    player.packet_sent_time = now_epoch
+                    player.packet_sent_time = os_time()
                     player.is_awaiting_packet = true
                 end
             end
@@ -63,9 +62,9 @@ do
 
     -- To be hooked on to eventPlayerGetCheese
     local function receive_packet(pn)
+        local now_epoch = os_time()
         local player = players[pn]
         if player and player.is_awaiting_packet then
-            local now_epoch = os_time()
             local time_ms = (now_epoch - player.packet_sent_time)
             if packet_received_callback then
                 packet_received_callback(pn, time_ms)
