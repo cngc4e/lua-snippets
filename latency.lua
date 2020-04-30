@@ -5,6 +5,11 @@ do
     local results_callback = nil
     local send_delay_threshold_ms = 0 -- a delay after which the next packet can be sent again after receiving one. used to prevent race causing cheese not getting removed in time.
 
+    -- Cached function lookups
+    local os_time = os.time
+    local tfm_exec_removeCheese = tfm.exec.removeCheese
+    local tfm_exec_movePlayer = tfm.exec.movePlayer
+
     local function tests_results(numtbl)
         local sum, lowest, highest, cnt = 0, numtbl[1], numtbl[1], numtbl._count
         for i = 1, cnt do
@@ -43,12 +48,12 @@ do
 
     -- To be hooked on to eventLoop
     local function send_packets()
-        local now_epoch = os.time()
+        local now_epoch = os_time()
         for name, player in pairs(players) do
             if not player.is_awaiting_packet then
                 if not player.packet_received_time or now_epoch - player.packet_received_time >= send_delay_threshold_ms then
-                    tfm.exec.removeCheese(name)
-                    tfm.exec.movePlayer(name, 388, 278)  -- tp to cheese
+                    tfm_exec_removeCheese(name)
+                    tfm_exec_movePlayer(name, 388, 278)  -- tp to cheese
                     player.packet_sent_time = now_epoch
                     player.is_awaiting_packet = true
                 end
@@ -60,7 +65,7 @@ do
     local function receive_packet(pn)
         local player = players[pn]
         if player and player.is_awaiting_packet then
-            local now_epoch = os.time()
+            local now_epoch = os_time()
             local time_ms = (now_epoch - player.packet_sent_time)
             if packet_received_callback then
                 packet_received_callback(pn, time_ms)
