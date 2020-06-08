@@ -3,7 +3,6 @@ do
     local players = {}
     local packet_received_callback = nil
     local results_callback = nil
-    local send_delay_threshold_ms = 0 -- a delay after which the next packet can be sent again after receiving one. used to prevent race causing cheese not getting removed in time.
 
     -- Cached function lookups
     local os_time = os.time
@@ -29,8 +28,7 @@ do
             max_tests_count = test_counts,
             tests = { _count = 0 },
             is_awaiting_packet = false,
-            packet_sent_time = nil,
-            packet_received_time = nil
+            packet_sent_time = nil
         }
     end
 
@@ -50,12 +48,10 @@ do
     local function send_packets()
         for name, player in pairs(players) do
             if not player.is_awaiting_packet then
-                if not player.packet_received_time or os_time() - player.packet_received_time >= send_delay_threshold_ms then
-                    tfm_exec_removeCheese(name)
-                    tfm_exec_movePlayer(name, 388, 278)  -- tp to cheese
-                    player.packet_sent_time = os_time()
-                    player.is_awaiting_packet = true
-                end
+                tfm_exec_removeCheese(name)
+                tfm_exec_movePlayer(name, 388, 278)  -- tp to cheese
+                player.packet_sent_time = os_time()
+                player.is_awaiting_packet = true
             end
         end
     end
@@ -69,7 +65,6 @@ do
             if packet_received_callback then
                 packet_received_callback(pn, time_ms)
             end
-            player.packet_received_time = now_epoch
             player.tests[player.tests._count + 1] = time_ms
             player.tests._count = player.tests._count + 1
             player.is_awaiting_packet = false
