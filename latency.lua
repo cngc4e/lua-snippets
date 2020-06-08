@@ -3,6 +3,7 @@ do
     local players = {}
     local packet_received_callback = nil
     local results_callback = nil
+    local cheese_location = nil
 
     -- Cached function lookups
     local os_time = os.time
@@ -44,12 +45,19 @@ do
         results_callback = cb
     end
 
+    local function set_cheese_location(x_pos, y_pos)
+        cheese_location = {x_pos, y_pos}
+    end
+
     -- To be hooked on to eventLoop
     local function send_packets()
+        if not cheese_location then
+            return
+        end
         for name, player in pairs(players) do
             if not player.is_awaiting_packet then
                 tfm_exec_removeCheese(name)
-                tfm_exec_movePlayer(name, 388, 278)  -- tp to cheese
+                tfm_exec_movePlayer(name, cheese_location[1], cheese_location[2])  -- tp to cheese
                 player.packet_sent_time = os_time()
                 player.is_awaiting_packet = true
             end
@@ -84,6 +92,7 @@ do
         removePlayer = remove_player,
         setPacketReceivedCallback = set_packet_received_callback,
         setResultsCallback = set_results_callback,
+        setCheeseLocation = set_cheese_location,
         sendPackets = send_packets,
         receivePacket = receive_packet
     }
@@ -98,6 +107,7 @@ end)
 ping_system.setResultsCallback(function(pn, result)
     print(pn.."'s Average: "..result.average.."ms, Lowest: "..result.lowest.."ms, Highest: "..result.highest.."ms")
 end)
+ping_system.setCheeseLocation(388, 278)
 function eventLoop()
     ping_system.sendPackets()
 end
