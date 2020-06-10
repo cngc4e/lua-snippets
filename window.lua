@@ -3,14 +3,14 @@ do
     local windows = {}
     window.__index = window
 
-    local function get(window_id, pn)
-        if not windows[window_id] then
-            windows[window_id] = {}
-        elseif windows[window_id][pn]
-                and getmetatable(windows[window_id][pn]) then
-            return windows[window_id][pn]
+    local function get(pn, window_id)
+        if not windows[pn] then
+            windows[pn] = {}
+        elseif windows[pn][window_id]
+                and getmetatable(windows[pn][window_id]) then
+            return windows[pn][window_id]
         end
-        windows[window_id][pn] = {
+        windows[pn][window_id] = {
             window_id = window_id,
             pn = pn,
             ta_ids = { },
@@ -18,7 +18,11 @@ do
             ta_id_highest = 0,
             is_persistent = false
         }
-        return setmetatable(windows[window_id][pn], window)
+        return setmetatable(windows[pn][window_id], window)
+    end
+
+    local function clearAll(pn)
+        windows[pn] = nil
     end
 
     function window:addImage(name, target, x, y)
@@ -71,7 +75,11 @@ end
 ----------------------
 --- sample usage 
 ----------------------
-local wdw = window.get(69, "Casserole")
+function eventPlayerLeft(pn)
+    window.clearAll(pn)
+end
+
+local wdw = window.get("Casserole", 69)
 wdw:setPersistent(true)
 wdw:addTextArea("", 10, 10, 700, 300)
 wdw:setPersistent(false)
