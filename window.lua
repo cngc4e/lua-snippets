@@ -43,17 +43,28 @@ do
     end
 
     function window:partialClose()
+        local to_remove = { _count = 0 }
         for id, persist in pairs(self.ta_ids) do
             if not persist then
                 ui.removeTextArea(id, self.pn)
+                to_remove[to_remove._count + 1] = id
+                to_remove._count = to_remove._count + 1
             end
         end
+        for i = 1, to_remove._count do
+            self.ta_ids[to_remove[i]] = nil
+        end
+        to_remove = { _count = 0 }
         for id, persist in pairs(self.img_ids) do
             if not persist then
                 tfm.exec.removeImage(id)
+                to_remove[to_remove._count + 1] = id
+                to_remove._count = to_remove._count + 1
             end
         end
-        self.is_persistent = false
+        for i = 1, to_remove._count do
+            self.ta_ids[to_remove[i]] = nil
+        end
     end
 
     function window:close()
