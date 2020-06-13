@@ -25,11 +25,11 @@ do
                 end
             end,
             close = function(pn, p_data)
-                ui.removeTextArea(WINDOW_TESTING+1)
-                ui.removeTextArea(WINDOW_TESTING+2)
-                ui.removeTextArea(WINDOW_TESTING+3)
-                ui.removeTextArea(WINDOW_TESTING+4)
-                ui.removeTextArea(WINDOW_TESTING+5)
+                ui.removeTextArea(WINDOW_TESTING+1, pn)
+                ui.removeTextArea(WINDOW_TESTING+2, pn)
+                ui.removeTextArea(WINDOW_TESTING+3, pn)
+                ui.removeTextArea(WINDOW_TESTING+4, pn)
+                ui.removeTextArea(WINDOW_TESTING+5, pn)
                 tfm.exec.removeImage(p_data.images['haha_picture'])
                 p_data.images['haha_picture'] = nil
             end,
