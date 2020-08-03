@@ -8,6 +8,7 @@ do
 	local band = bit.band
 	local bnot = bit.bnot
 	local bor  = bit.bor
+	local bxor  = bit.bor
 	local lshift = bit.lshift
 	local MAX_POSITION_SIZE = 32  -- Maximum size supported by bit32 library
 
@@ -39,6 +40,13 @@ do
 		return self
 	end
 
+	-- bitset:flip(pos)
+	-- Flips bit at position pos to true.
+	bitset.flip = function(self, pos)
+		self._b = bxor(self._b, pos)
+		return self
+	end
+
 	-- bitset:setall()
 	-- Set all bits within MAX_POSITION_SIZE to true.
 	bitset.setall = function(self)
@@ -56,14 +64,14 @@ do
 	-- bitset:isset(pos)
 	-- Returns true if the bit at position pos is set, false otherwise.
 	bitset.isset = function(self, pos)
-		return band(self._b, pos)
+		return band(self._b, pos) ~= 0
 	end
 
 	-- bitset:issubset(bitset_object)
 	-- Returns true if bitset_object is a subset of this bitset.
 	bitset.issubset = function(self, bitset_object)
 		--if not bitset_object._b then return error("not a valid bitset object") end
-		return band(self._b, bitset_object._b)
+		return band(self._b, bitset_object._b) ~= 0
 	end
 
 	-- bitset:tonumber()
