@@ -37,7 +37,7 @@ do
             local args = {}
             local arg_len = #self.args
             for i = 1, arg_len do
-                local err, res = self.args[i]:verify(a)
+                local err, res = self.args[i]:verify(a, pn)
                 if err ~= tfmcmd.OK then
                     return err, res
                 end
@@ -69,7 +69,7 @@ do
             local args = {}
             local arg_len = #self.args
             for i = 1, arg_len do
-                local err, res = self.args[i]:verify(a)
+                local err, res = self.args[i]:verify(a, pn)
                 if err ~= tfmcmd.OK then
                     return err, res
                 end
@@ -165,11 +165,11 @@ do
             if not res then
                 return tfmcmd.ETYPE, "Expected number"
             end
-            if a.min and res < a.min then
-                return tfmcmd.ERANGE, "Min: " .. a.min
+            if self.min and res < self.min then
+                return tfmcmd.ERANGE, "Min: " .. self.min
             end
-            if a.max and res > a.min then
-                return tfmcmd.ERANGE, "Max: " .. a.max
+            if self.max and res > self.max then
+                return tfmcmd.ERANGE, "Max: " .. self.max
             end
             a.current = a.current + 1  -- go up one word
             return tfmcmd.OK, res
@@ -192,8 +192,9 @@ do
             words._len = words._len + 1
             words[words._len] = word
         end
-        if commands[words[1]] then
-            return commands[words[1]]:call(pn, words)
+        local cmd = commands[words[1]:lower()]
+        if cmd then
+            return cmd:call(pn, words)
         else
             return tfmcmd.ENOCMD, "no command found"
         end
