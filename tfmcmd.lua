@@ -33,7 +33,7 @@ do
                 end
             end
         end,
-        call = function(self, a)
+        call = function(self, pn, a)
             local args = {}
             local arg_len = #self.args
             for i = 1, arg_len do
@@ -65,7 +65,7 @@ do
                 }
             end
         end,
-        call = function(self, a)
+        call = function(self, pn, a)
             local args = {}
             local arg_len = #self.args
             for i = 1, arg_len do
@@ -88,8 +88,8 @@ do
         verify = function(self, a)
             local str = a[a.current]
             if not str then
-                if self.optional then
-                    return tfmcmd.OK, nil
+                if self.optional or self.default then
+                    return tfmcmd.OK, self.default or nil
                 else
                     return tfmcmd.EINVAL, "missing argument"
                 end
@@ -112,8 +112,8 @@ do
         verify = function(self, a)
             local str = a[a.current]
             if not str then
-                if self.optional then
-                    return tfmcmd.OK, nil
+                if self.optional or self.default then
+                    return tfmcmd.OK, self.default or nil
                 else
                     return tfmcmd.EINVAL, "missing argument"
                 end
@@ -126,11 +126,36 @@ do
         return setmetatable(attr or {}, MT_ArgString)
     end
 
+    local MT_ArgJoinedString = { __index = {
+        verify = function(self, a)
+            local join = {}
+            local max_index = a._len
+            if self.length then
+                max_index = math.min(a._len, a.current + self.length - 1)
+            end
+            for i = a.current, max_index do
+                a.current = i + 1  -- go up one word
+                join[#join + 1] = a[i]
+            end
+            if #join == 0 then
+                if self.optional or self.default then
+                    return tfmcmd.OK, self.default or nil
+                else
+                    return tfmcmd.EINVAL, "missing argument"
+                end
+            end
+            return tfmcmd.OK, table.concat(join, " ")
+        end,
+    }}
+    tfmcmd.ArgJoinedString = function(attr)
+        return setmetatable(attr or {}, MT_ArgJoinedString)
+    end
+
     local MT_ArgNumber = { __index = {
         verify = function(self, a)
             local word = a[a.current]
             if not word then
-                if self.optional then
+                if self.optional or self.default then
                     return tfmcmd.OK, self.default or nil
                 else
                     return tfmcmd.EINVAL, "missing argument"
@@ -168,7 +193,7 @@ do
             words[words._len] = word
         end
         if commands[words[1]] then
-            return commands[words[1]]:call(words)
+            return commands[words[1]]:call(pn, words)
         else
             return tfmcmd.ENOCMD, "no command found"
         end
@@ -221,6 +246,17 @@ local commands = {
         },
         func = function(pn, cmd, n1, n2)
 
+        end,
+    },
+    tfmcmd.Main {
+        name = "a",
+        aliases = {"me"},
+        description = "MEME",
+        args = {
+            tfmcmd.ArgJoinedString { length = 4, default = "pooped" },
+        },
+        func = function(pn, msg)
+            tfm.exec.chatMessage("<T>*"..pn.." "..msg)
         end,
     },
 }
