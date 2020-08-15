@@ -2,6 +2,7 @@
 local tfmcmd = {}
 do
     local commands = {}
+    local default_allowed = true  -- can be fn(pn) or bool
 
     --- Error enums
     tfmcmd.OK       = 0  -- No errors
@@ -21,7 +22,8 @@ do
             commands[self.name] = {
                 args = self.args,
                 func = self.func,
-                call = self.call
+                call = self.call,
+                allowed = self.allowed
             }
             if self.aliases then
                 for i = 1, #self.aliases do
@@ -61,7 +63,8 @@ do
                     name = self.commands[i],
                     args = self.args,
                     func = self.func,
-                    call = self.call
+                    call = self.call,
+                    allowed = self.allowed
                 }
             end
         end,
@@ -119,7 +122,7 @@ do
                 end
             end
             a.current = a.current + 1  -- go up one word
-            return tfmcmd.OK, str
+            return tfmcmd.OK, self.lower and str:lower() or str
         end,
     }}
     tfmcmd.ArgString = function(attr)
@@ -186,6 +189,10 @@ do
         end
     end
 
+    tfmcmd.setDefaultAllow = function(allow)
+        default_allowed = allow
+    end
+
     tfmcmd.executeChatCommand = function(pn, msg)
         local words = { current = 2, _len = 0 }  -- current = index of argument which is to be accessed first in the next arg type
         for word in msg:gmatch("[^ ]+") do
@@ -194,11 +201,43 @@ do
         end
         local cmd = commands[words[1]:lower()]
         if cmd then
-            return cmd:call(pn, words)
+            local allow_target
+            if cmd.allowed ~= nil then  -- override default permission rule
+                allow_target = cmd.allowed
+            else
+                allow_target = default_allowed
+            end
+
+            local allowed
+            if type(allow_target) == "function" then
+                allowed = allow_target(pn)
+            else
+                allowed = allow_target
+            end
+
+            if allowed then
+                return cmd:call(pn, words)
+            else
+                return tfmcmd.EPERM, "no permission"
+            end
         else
             return tfmcmd.ENOCMD, "no command found"
         end
     end
+end
+
+----------------------
+--- sample usage of tfmcmd
+----------------------
+
+local LEVEL_ADMIN = function(pn)
+    --return ranks[pn] >= r.ADMIN
+    return true
+end
+
+local LEVEL_PLAYER = function(pn)
+    --return ranks[pn] >= r.PLAYER
+    return true
 end
 
 local commands = {
@@ -206,6 +245,7 @@ local commands = {
         name = "shaman",
         aliases = {"sham"},
         description = "Sets player as shaman",
+        allowed = LEVEL_ADMIN,
         args = {
             tfmcmd.ArgPlayerName { optional = true },
         },
@@ -217,11 +257,11 @@ local commands = {
         name = "score",
         description = "Sets player score to specified",
         args = {
-            tfmcmd.ArgPlayerName { optional = true },
+            tfmcmd.ArgPlayerName { },
             tfmcmd.ArgNumber { default = 0 },
         },
         func = function(pn, target, score)
-            tfm.exec.setPlayerScore(pn, target, score)
+            tfm.exec.setPlayerScore(target, score)
         end,
     },
     tfmcmd.Main {
@@ -230,7 +270,7 @@ local commands = {
         description = "Loads specified map",
         args = {
             tfmcmd.ArgString { optional = true },
-            tfmcmd.ArgString { optional = true },
+            tfmcmd.ArgString { lower = true, optional = true },
         },
         func = function(pn, code, arg)
             tfm.exec.chatMessage("code "..(code or "none"))
@@ -262,6 +302,7 @@ local commands = {
     },
 }
 
+tfmcmd.setDefaultAllow(true)
 tfmcmd.initCommands(commands)
 
 function eventChatCommand(pn, msg)
