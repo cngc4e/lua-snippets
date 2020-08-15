@@ -1,6 +1,72 @@
 -- Command handler for Transformice
 local tfmcmd = {}
 do
+    --[[
+        ++ Command Types (CmdType) ++
+        Name: tfmcmd.Main
+        Description:
+            A normal command.
+        Supported parameters:
+            - name (String) : The command name.
+                                (NOTE: Will override any previous commands and aliases
+                                registered with the same names)
+            - aliases (String[]) : Numeric table containing alias names for the command
+                                (NOTE: Will override any previous commands and aliases
+                                registered with the same names) [Optional]
+            - allowed (Boolean / Function) : Override the default permission rule set by
+                                tfmcmd.setDefaultAllow [Optional]
+            - args (ArgType[]) : Arguments specification (see below for supported types)
+            - func (Function(playerName, ...)) :
+                Function to handle the command, called on successful checks against permission and args.
+                    - playerName (String) : The player who invoked the command
+                    - ... (Mixed) : A collection of arguments, each type specified according to args.
+
+        Name: tfmcmd.Interface
+        Description:
+            Similar to Main command type, but accepts multiple command names and calls the command
+            handler with the target command name. Used to define commands that operate nearly the same
+            way, providing a way to commonise and clean up code.
+        Supported parameters:
+            - commands (String[]) : Numeric table containing names for the commands that will use this
+                                interface.
+                                (NOTE: Will override any previous commands and aliases
+                                registered with the same names)
+            - allowed (Boolean / Function) : Override the default permission rule set by
+                                tfmcmd.setDefaultAllow [Optional]
+            - args (ArgType[]) : Arguments specification (see below for supported types)
+            - func (Function(playerName, commandName, ...)) :
+                Function to handle the command, called on successful checks against permission and args.
+                    - playerName (String) : The player who invoked the command
+                    - commandName (String) : The command name used to invoke this interface
+                    - ... (Mixed) : A collection of arguments, each type specified according to args.
+        
+        ++ Argument Types (ArgType) ++
+        Name: tfmcmd.ArgString
+        Return on success: String, or nil if optional is set
+        Supported parameters:
+            - optional (Boolean) : If true, and if command does not specify this argument, will return nil.
+                                Otherwise will error on EINVAL.
+            - default (String) : Will return this string if command does not specify this argument
+            - lower (Boolean) : Whether the string should be converted to all lowercase
+        
+        Name: tfmcmd.ArgJoinedString
+        Return on success: String, or nil if optional is set
+        Supported parameters:
+            - optional (Boolean) : If true, and if command does not specify this argument, will return nil.
+                                Otherwise will error on EINVAL.
+            - default (String) : Will return this string if command does not specify this argument
+            - length (Integer) : The maximum number of words to join
+
+        Name: tfmcmd.ArgNumber
+        Return on success: Integer, or nil if optional is set
+        Supported parameters:
+            - optional (Boolean) : If true, and if command does not specify this argument, will return nil.
+                                Otherwise will error on EINVAL.
+            - default (Integer) : Will return this number if command does not specify this argument
+            - min (Integer) : If specified, and the number parsed is < min, will error on ERANGE
+            - max (Integer) : If specified, and the number parsed is > max, will error on ERANGE
+    ]]
+
     local commands = {}
     local default_allowed = true  -- can be fn(pn) or bool
 
@@ -84,31 +150,6 @@ do
     }}
     tfmcmd.Interface = function(attr)
         return setmetatable(attr or {}, MT_Interface)
-    end
-
-    --- Argument types
-    local MT_ArgPlayerName = { __index = {
-        verify = function(self, a)
-            local str = a[a.current]
-            if not str then
-                if self.optional or self.default then
-                    return tfmcmd.OK, self.default or nil
-                else
-                    return tfmcmd.EINVAL, "missing argument"
-                end
-            end
-            local ign = str:lower()
-            for name in pairs(tfm.get.room.playerList) do
-                if string.lower(name):find(ign) then
-                    a.current = a.current + 1  -- go up one word
-                    return tfmcmd.OK, name
-                end
-            end
-            return tfmcmd.EOTHER, "No such player found."
-        end,
-    }}
-    tfmcmd.ArgPlayerName = function(attr)
-        return setmetatable(attr or {}, MT_ArgPlayerName)
     end
 
     local MT_ArgString = { __index = {
@@ -229,6 +270,31 @@ end
 ----------------------
 --- sample usage of tfmcmd
 ----------------------
+do  -- tfmcmd.ArgType EXTENSIONS
+    local MT_ArgPlayerName = { __index = {
+        verify = function(self, a)
+            local str = a[a.current]
+            if not str then
+                if self.optional or self.default then
+                    return tfmcmd.OK, self.default or nil
+                else
+                    return tfmcmd.EINVAL, "missing argument"
+                end
+            end
+            local ign = str:lower()
+            for name in pairs(tfm.get.room.playerList) do
+                if string.lower(name):find(ign) then
+                    a.current = a.current + 1  -- go up one word
+                    return tfmcmd.OK, name
+                end
+            end
+            return tfmcmd.EOTHER, "No such player found."
+        end,
+    }}
+    tfmcmd.ArgPlayerName = function(attr)
+        return setmetatable(attr or {}, MT_ArgPlayerName)
+    end
+end
 
 local LEVEL_ADMIN = function(pn)
     --return ranks[pn] >= r.ADMIN
