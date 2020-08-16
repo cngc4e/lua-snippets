@@ -265,12 +265,7 @@ do
         default_allowed = allow
     end
 
-    tfmcmd.executeChatCommand = function(pn, msg)
-        local words = { current = 2, _len = 0 }  -- current = index of argument which is to be accessed first in the next arg type
-        for word in msg:gmatch("[^ ]+") do
-            words._len = words._len + 1
-            words[words._len] = word
-        end
+    local execute_command = function(pn, words)
         local cmd = commands[words[1]:lower()]
         if cmd then
             local allow_target
@@ -295,6 +290,21 @@ do
         else
             return tfmcmd.ENOCMD, "no command found"
         end
+    end
+
+    tfmcmd.executeCommand = function(pn, words)
+        words.current = 2  -- current = index of argument which is to be accessed first in the next arg type
+        words._len = #words
+        return execute_command(pn, words)
+    end
+
+    tfmcmd.executeChatCommand = function(pn, msg)
+        local words = { current = 2, _len = 0 }  -- current = index of argument which is to be accessed first in the next arg type
+        for word in msg:gmatch("[^ ]+") do
+            words._len = words._len + 1
+            words[words._len] = word
+        end
+        return execute_command(pn, words)
     end
 end
 
