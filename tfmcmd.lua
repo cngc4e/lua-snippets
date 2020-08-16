@@ -15,7 +15,7 @@ do
                                 registered with the same names) [Optional]
             - allowed (Boolean / Function) : Override the default permission rule set by
                                 tfmcmd.setDefaultAllow [Optional]
-            - args (ArgType[]) : Arguments specification (see below for supported types)
+            - args (ArgType[] / ArgType) : Arguments specification (see below for supported types)
             - func (Function(playerName, ...)) :
                 Function to handle the command, called on successful checks against permission and args.
                     - playerName (String) : The player who invoked the command
@@ -33,7 +33,7 @@ do
                                 registered with the same names)
             - allowed (Boolean / Function) : Override the default permission rule set by
                                 tfmcmd.setDefaultAllow [Optional]
-            - args (ArgType[]) : Arguments specification (see below for supported types)
+            - args (ArgType[] / ArgType) : Arguments specification (see below for supported types)
             - func (Function(playerName, commandName, ...)) :
                 Function to handle the command, called on successful checks against permission and args.
                     - playerName (String) : The player who invoked the command
@@ -65,6 +65,14 @@ do
             - default (Integer) : Will return this number if command does not specify this argument
             - min (Integer) : If specified, and the number parsed is < min, will error on ERANGE
             - max (Integer) : If specified, and the number parsed is > max, will error on ERANGE
+
+        Name: tfmcmd.ALL_WORDS
+        Description:
+            Simply returns all raw arguments in strings. No fixed length. Will not error out due to no error
+            checking / processing. Not recommended to use if you are sure on the specific types / number of
+            arguments (if so specify them using a table of ArgType).
+        Return on success: All raw arguments in strings
+        No parameters
     ]]
 
     local commands = {}
@@ -79,14 +87,17 @@ do
     tfmcmd.ERANGE   = 5  -- Number out of range
     tfmcmd.EOTHER   = 6  -- Other unknown errors
 
+    -- Args enums
+    tfmcmd.ALL_WORDS = 1
+
     --- Command types
     local MT_Main = { __index = {
         register = function(self)
-            if not self.name or not self.args or not self.func then
-                error("Invalid command def")
+            if not self.name or not self.func then
+                error("Invalid command def"..(self.name and ": name = "..self.name))
             end
             commands[self.name] = {
-                args = self.args,
+                args = self.args or {},
                 func = self.func,
                 call = self.call,
                 allowed = self.allowed
@@ -102,6 +113,13 @@ do
             end
         end,
         call = function(self, pn, a)
+            if self.args == tfmcmd.ALL_WORDS then
+                local ret, retmsg = self.func(pn, table.unpack(a, a.current, a._len))
+                if ret then
+                    return ret, retmsg
+                end
+                return tfmcmd.OK
+            end
             local args = {}
             local arg_len = #self.args
             for i = 1, arg_len do
@@ -111,7 +129,10 @@ do
                 end
                 args[i] = res
             end
-            self.func(pn, table.unpack(args, 1, arg_len))
+            local ret, retmsg = self.func(pn, table.unpack(args, 1, arg_len))
+            if ret then
+                return ret, retmsg
+            end
             return tfmcmd.OK
         end,
     }}
@@ -121,13 +142,13 @@ do
 
     local MT_Interface = { __index = {
         register = function(self)
-            if not self.commands or not self.args or not self.func then
-                error("Invalid command def")
+            if not self.commands or not self.func then
+                error("Invalid command def"..(self.name and ": name = "..self.name))
             end
             for i = 1, #self.commands do
                 commands[self.commands[i]] = {
                     name = self.commands[i],
-                    args = self.args,
+                    args = self.args or {},
                     func = self.func,
                     call = self.call,
                     allowed = self.allowed
@@ -135,6 +156,13 @@ do
             end
         end,
         call = function(self, pn, a)
+            if self.args == tfmcmd.ALL_WORDS then
+                local ret, retmsg = self.func(pn, self.name, table.unpack(a, a.current, a._len))
+                if ret then
+                    return ret, retmsg
+                end
+                return tfmcmd.OK
+            end
             local args = {}
             local arg_len = #self.args
             for i = 1, arg_len do
@@ -144,7 +172,10 @@ do
                 end
                 args[i] = res
             end
-            self.func(pn, self.name, table.unpack(args, 1, arg_len))
+            local ret, retmsg = self.func(pn, self.name, table.unpack(args, 1, arg_len))
+            if ret then
+                return ret, retmsg
+            end
             return tfmcmd.OK
         end,
     }}
