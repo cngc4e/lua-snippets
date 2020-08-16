@@ -45,7 +45,7 @@ do
         Return on success: String, or nil if optional is set
         Supported parameters:
             - optional (Boolean) : If true, and if command does not specify this argument, will return nil.
-                                Otherwise will error on EINVAL.
+                                Otherwise will error on EMISSING.
             - default (String) : Will return this string if command does not specify this argument
             - lower (Boolean) : Whether the string should be converted to all lowercase
         
@@ -53,7 +53,7 @@ do
         Return on success: String, or nil if optional is set
         Supported parameters:
             - optional (Boolean) : If true, and if command does not specify this argument, will return nil.
-                                Otherwise will error on EINVAL.
+                                Otherwise will error on EMISSING.
             - default (String) : Will return this string if command does not specify this argument
             - length (Integer) : The maximum number of words to join
 
@@ -61,7 +61,7 @@ do
         Return on success: Integer, or nil if optional is set
         Supported parameters:
             - optional (Boolean) : If true, and if command does not specify this argument, will return nil.
-                                Otherwise will error on EINVAL.
+                                Otherwise will error on EMISSING.
             - default (Integer) : Will return this number if command does not specify this argument
             - min (Integer) : If specified, and the number parsed is < min, will error on ERANGE
             - max (Integer) : If specified, and the number parsed is > max, will error on ERANGE
@@ -83,9 +83,10 @@ do
     tfmcmd.ENOCMD   = 1  -- No such valid command found
     tfmcmd.EPERM    = 2  -- Permission denied
     tfmcmd.EINVAL   = 3  -- Invalid argument value
-    tfmcmd.ETYPE    = 4  -- Invalid argument type
-    tfmcmd.ERANGE   = 5  -- Number out of range
-    tfmcmd.EOTHER   = 6  -- Other unknown errors
+    tfmcmd.EMISSING = 4  -- Missing argument
+    tfmcmd.ETYPE    = 5  -- Invalid argument type
+    tfmcmd.ERANGE   = 6  -- Number out of range
+    tfmcmd.EOTHER   = 7  -- Other unknown errors
 
     -- Args enums
     tfmcmd.ALL_WORDS = 1
@@ -190,7 +191,7 @@ do
                 if self.optional or self.default then
                     return tfmcmd.OK, self.default or nil
                 else
-                    return tfmcmd.EINVAL, "missing argument"
+                    return tfmcmd.EMISSING
                 end
             end
             a.current = a.current + 1  -- go up one word
@@ -216,7 +217,7 @@ do
                 if self.optional or self.default then
                     return tfmcmd.OK, self.default or nil
                 else
-                    return tfmcmd.EINVAL, "missing argument"
+                    return tfmcmd.EMISSING
                 end
             end
             return tfmcmd.OK, table.concat(join, " ")
@@ -233,7 +234,7 @@ do
                 if self.optional or self.default then
                     return tfmcmd.OK, self.default or nil
                 else
-                    return tfmcmd.EINVAL, "missing argument"
+                    return tfmcmd.EMISSING
                 end
             end
             local res = tonumber(word)
@@ -285,10 +286,10 @@ do
             if allowed then
                 return cmd:call(pn, words)
             else
-                return tfmcmd.EPERM, "no permission"
+                return tfmcmd.EPERM
             end
         else
-            return tfmcmd.ENOCMD, "no command found"
+            return tfmcmd.ENOCMD
         end
     end
 
@@ -319,7 +320,7 @@ do  -- tfmcmd.ArgType EXTENSIONS
                 if self.optional or self.default then
                     return tfmcmd.OK, self.default or nil
                 else
-                    return tfmcmd.EINVAL, "missing argument"
+                    return tfmcmd.EMISSING
                 end
             end
             local ign = str:lower()
@@ -415,6 +416,13 @@ tfmcmd.initCommands(commands)
 function eventChatCommand(pn, msg)
     local ret, msg = tfmcmd.executeChatCommand(pn, msg)
     if ret ~= tfmcmd.OK then
+        local default_msgs = {
+            [tfmcmd.ENOCMD] = "no command found",
+            [tfmcmd.EPERM] = "no permission",
+            [tfmcmd.EMISSING] = "missing argument",
+            [tfmcmd.EINVAL] = "invalid argument"
+        }
+        msg = msg or default_msgs[ret]
         tfm.exec.chatMessage("<R>error" .. (msg and (": "..msg) or ""), pn)
     end
 end
