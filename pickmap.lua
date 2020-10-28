@@ -34,13 +34,14 @@ local pick = function(p, dbg_cb)
     local sz = #p
     if sz < 1 then return nil end
 
-    local min, max, range = 0, 0
-    for i = 1 , sz do
+    local min, max, range = p[1], p[1]
+    for i = 2 , sz do
         local m = p[i]
         if m < min then min = m
         elseif m > max then max = m end
     end
     range = max - min
+    if range < 1 then return math.random(sz) end  -- lol we're not dividing by zero
 
     local chosen = 1
     local chosen_pool, cp_sz = {chosen}, 1  -- for elements with similar chances, make a new pool to pick amongst them
