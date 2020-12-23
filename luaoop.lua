@@ -3,14 +3,17 @@ do
     Class._className = "Class"
     Class.__index = Class
 
-    Class._init = function()
-        return {}
+    Class._init = function(self)
     end
 
-    Class.new = function(parent, ...)
-        local init = parent._init
+    Class.new = function(super, ...)
+        local init = super._init
         if not init then error("Not a valid Class.") end
-        return setmetatable(init(parent, ...), parent)
+
+        local instance = setmetatable({}, super)
+        init(instance, ...)
+
+        return instance
     end
 
     Class.extend = function(base, name)
@@ -23,9 +26,8 @@ end
 local Person = Class:extend("Person")
 do
     Person._init = function(self, name)
-        local data = self._parent:_init()
-        data.hello = name
-        return data
+        Person._parent._init(self)
+        self.hello = name
     end
 
     Person.sayBye = function(self) print("Lol bye. " .. tostring(self.hello)) end
@@ -36,9 +38,7 @@ end
 local SleepyPerson = Person:extend("SleepyPerson")
 do
     SleepyPerson._init = function(self, name)
-        local data = self._parent:_init()
-        data.hello = name
-        return data
+        SleepyPerson._parent._init(self, name)
     end
 
     SleepyPerson.sayHi = function(self)
