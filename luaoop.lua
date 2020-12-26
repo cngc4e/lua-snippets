@@ -1,6 +1,7 @@
 local Class = {}
 do
     Class._className = "Class"
+    Class._class = Class
     Class.__index = Class
 
     Class._init = function(self)
@@ -9,19 +10,24 @@ do
     Class.new = function(super, ...)
         local init = super._init
         if not init then error("Not a valid Class.") end
+        if super._isInstance then error("Expected Class, got Instance.") end
 
-        local instance = setmetatable({}, super)
+        local instance = setmetatable({ _isInstance = true }, super)
         init(instance, ...)
 
         return instance
     end
 
     Class.extend = function(base, name)
+        if base._isInstance then error("Expected Class, got Instance.") end
         local super = setmetatable({ _className = name, _parent = base }, base)
+        super._class = super
         super.__index = super
         return super
     end
 end
+
+--return Class
 
 local Person = Class:extend("Person")
 do
@@ -52,3 +58,10 @@ mike:sayHi()
 
 local dand = SleepyPerson:new("Dandruff")
 dand:sayHi()
+
+-- Should fail
+--mike:extend("Big Mike")
+--dand:new("Big Dandruff"):sayHi()
+
+mike._class:extend("Big Mike"):new("Mickey Mouse"):sayHi()
+dand._class:new("Big Dandruff"):sayHi()
