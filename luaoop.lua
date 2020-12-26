@@ -1,6 +1,6 @@
 local Class = {}
 do
-    Class._className = "Class"
+    Class.className = "Class"
     Class._class = Class
     Class.__index = Class
 
@@ -20,10 +20,23 @@ do
 
     Class.extend = function(base, name)
         if base._isInstance then error("Expected Class, got Instance.") end
-        local super = setmetatable({ _className = name, _parent = base }, base)
+        local super = setmetatable({ className = name, _parent = base }, base)
         super._class = super
         super.__index = super
         return super
+    end
+
+    Class.isSubClass = function(self, class)
+        -- Check if it's a valid Class
+        if type(class) ~= "table" or not class._init then return false end
+
+        local c = self._class
+        while c do
+            if c == class then return true end
+            c = c._parent
+        end
+
+        return false
     end
 end
 
@@ -48,7 +61,7 @@ do
     end
 
     SleepyPerson.sayHi = function(self)
-        print("Zzzzzzzzz, I'll let them talk to you: " .. tostring(self._parent._className))
+        print("Zzzzzzzzz, I'll let them talk to you: " .. tostring(self._parent.className))
         self:sayBye()
     end
 end
@@ -65,3 +78,16 @@ dand:sayHi()
 
 mike._class:extend("Big Mike"):new("Mickey Mouse"):sayHi()
 dand._class:new("Big Dandruff"):sayHi()
+
+local check_subclass = function(base, cmp)
+    local nnot = base:isSubClass(cmp) and "" or " NOT"
+    local nhello = base.hello and (" (%s)"):format(base.hello) or ""
+    local ncmp = cmp._isInstance and ("Instance of %s"):format(cmp.className) or cmp.className
+    print(("%s%s is%s a subclass of %s"):format(base.className, nhello, nnot, ncmp))
+end
+
+check_subclass(mike, mike._class:new("test mike"))
+check_subclass(mike, mike._class)
+check_subclass(mike, SleepyPerson)
+check_subclass(dand, SleepyPerson)
+check_subclass(dand, Class)
