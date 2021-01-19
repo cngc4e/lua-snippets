@@ -14,6 +14,8 @@ local order = {
     "index",
     "newindex",
     "call",
+    "metatable",
+    "tostring",
     -- Lua 5.2
     "len",
     "pairs",
@@ -72,6 +74,9 @@ local invoke = {
     ["call"] = function(metatbl)
         metatbl()
     end,
+    ["tostring"] = function(metatbl)
+        local _ = tostring(metatbl)
+    end,
     ["len"] = function(metatbl)
         local _ = #metatbl
     end,
@@ -83,7 +88,19 @@ local invoke = {
     end,
 }
 
+local test_overrides = {
+    ["metatable"] = function(metamthd)
+        local cmp_mt = {cmp=0}
+        local test = setmetatable({}, {
+            ["__" .. metamthd] = cmp_mt
+        })
+
+        return getmetatable(test) == cmp_mt
+    end,
+}
+
 local test_func = function(metamthd)
+    if test_overrides[metamthd] then return test_overrides[metamthd](metamthd) end
     local result = nil
 
     local test = setmetatable({}, {
