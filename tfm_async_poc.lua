@@ -18,6 +18,10 @@ end
 -- [[ Async/Await Proof of concept ! ]]
 queue = {}
 
+--- async
+--- @generic T
+--- @param fnc T
+--- @return T
 local function async(fnc)
     local t = {}
     t.coro = coroutine.create(fnc)
@@ -65,9 +69,12 @@ function eventLoop()
     end
 end
 
---- @type fun(h:number, r:number):number, number
-local async_op = async (
-    function (h, r)
+--- test async function
+--- @param h number # will divide by 2
+--- @param r number # will multiply by 2
+--- @return number
+--- @return number
+local async_op = async (function (h, r)
     return h / 2, r * 2
 end)
 
