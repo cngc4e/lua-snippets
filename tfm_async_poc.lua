@@ -23,7 +23,6 @@ local function async(fnc)
     t.coro = coroutine.create(fnc)
     setmetatable(t, {
         __call = function()
-            --supposed to schedule to hardbeat, but whatever
             -- no return because not awaited
             queue[#queue+1] = function() coroutine.resume(t.coro) end
         end
@@ -31,31 +30,34 @@ local function async(fnc)
     return t
 end
 
-local function await(t, ...)
+--- await
+--- @generic T
+--- @param t T
+--- @return T
+local function await(t)
     local this_coroutine, is_main = coroutine.running()
     if not this_coroutine or is_main then
         error("cannot call await without async")
     end
-    local args = {...}
-    queue[#queue+1] = function()
-        print("debug coroutine status", coroutine.status(t.coro))
-        local ret = { coroutine.resume(t.coro, table.unpack(args)) }
-        if ret[1] ~= true then
-            error("resume routine fail")
+    return function(...)
+        local args = {...}
+        queue[#queue+1] = function()
+            print("debug coroutine status", coroutine.status(t.coro))
+            local ret = { coroutine.resume(t.coro, table.unpack(args)) }
+            if ret[1] ~= true then
+                error("resume routine fail")
+            end
+            print("try resume", this_coroutine)
+            coroutine.resume(this_coroutine, table.unpack(ret, 2))
         end
-        print("try resume", this_coroutine)
-        coroutine.resume(this_coroutine, table.unpack(ret, 2))
+        print("await before", this_coroutine)
+        return coroutine.yield()
     end
-    print("await before", this_coroutine)
-    local ret = { coroutine.yield() }
-    print("await after", ret)
-    return table.unpack(ret)
 end
 
 
 -- [[ Start init ]]
 function eventLoop()
-    if #queue > 0 then print("q", #queue ) end
     local q = queue
     queue = {}
     for i = 1, #q do
@@ -63,13 +65,16 @@ function eventLoop()
     end
 end
 
-local async_op = async (function (h, r)
+--- @type fun(h:number, r:number):number, number
+local async_op = async (
+    function (h, r)
     return h / 2, r * 2
 end)
 
+
 local test = async (function ()
     print("test")
-    local v1, v2 = await (async_op, 2, 3)
+    local v1, v2 = await (async_op)(2, 3)
     print(v1, v2)
 end)
 
