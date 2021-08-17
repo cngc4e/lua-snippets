@@ -1,3 +1,13 @@
+
+--- [[ Set up debugging and init queue (for event loop)]]
+IS_DEBUGGING = true
+queue = {}
+function verbose(...)
+    if IS_DEBUGGING then
+        print(...)
+    end
+end
+
 -- [[ Override print to accept varargs in tfm ]]
 local raw_print = print
 
@@ -16,7 +26,6 @@ print = function(...)
 end
 
 -- [[ Async/Await Proof of concept ! ]]
-queue = {}
 
 local ERROR_COROUTINE = { error = 0x03 }
 
@@ -48,10 +57,10 @@ local function await(t)
     return function(...)
         local args = {...}
         queue[#queue+1] = function()
-            print("debug coroutine status", coroutine.status(t.coro))
+            verbose("debug coroutine status", coroutine.status(t.coro))
             local ret = { coroutine.resume(t.coro, table.unpack(args)) }
             if ret[1] ~= true then
-                print("try resume after error")
+                verbose("try resume after error")
                 --- @type string
                 local errmsg = ret[2]
                 if type(errmsg) == "string" then
@@ -61,11 +70,11 @@ local function await(t)
                 end
                 coroutine.resume(this_coroutine, ERROR_COROUTINE, errmsg)
             else
-                print("try resume", this_coroutine)
+                verbose("try resume", this_coroutine)
                 coroutine.resume(this_coroutine, table.unpack(ret, 2))
             end
         end
-        print("await before", this_coroutine)
+        verbose("await before", this_coroutine)
         return coroutine.yield()
     end
 end
@@ -83,6 +92,7 @@ local function isAsyncError(val)
 end
 
 -- [[ Start init ]]
+
 function eventLoop()
     local q = queue
     queue = {}
@@ -114,6 +124,7 @@ local async_error = async (function()
     return "success apparently?!"
 end)
 
+--- the main test !
 local test = async (function ()
     print("test basic return")
     local v1, v2 = await (async_op)(2, 3)
@@ -138,6 +149,7 @@ local test = async (function ()
 
 end)
 
+--IS_DEBUGGING = false
 print("start")
 test()
 
