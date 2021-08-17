@@ -18,6 +18,8 @@ end
 -- [[ Async/Await Proof of concept ! ]]
 queue = {}
 
+local ERROR_COROUTINE = { error = 0x03 }
+
 --- async
 --- @generic T
 --- @param fnc T
@@ -49,16 +51,36 @@ local function await(t)
             print("debug coroutine status", coroutine.status(t.coro))
             local ret = { coroutine.resume(t.coro, table.unpack(args)) }
             if ret[1] ~= true then
-                error("resume routine fail")
+                print("try resume after error")
+                --- @type string
+                local errmsg = ret[2]
+                if type(errmsg) == "string" then
+                    errmsg = errmsg:match("^%S*:?%d*:? ?(.-)$")
+                else
+                    errmsg = "Unknown error thrown in " .. tostring(t.coro)
+                end
+                coroutine.resume(this_coroutine, ERROR_COROUTINE, errmsg)
+            else
+                print("try resume", this_coroutine)
+                coroutine.resume(this_coroutine, table.unpack(ret, 2))
             end
-            print("try resume", this_coroutine)
-            coroutine.resume(this_coroutine, table.unpack(ret, 2))
         end
         print("await before", this_coroutine)
         return coroutine.yield()
     end
 end
 
+--- async error check
+---
+--- unfortunately due to the limitations of lua coroutines, we're unable
+--- to resume the thread and throw an error immediately. so we have to rely
+--- on the fact that the first return value may possibly be an error value.
+--- this function checks for that.
+--- @param val any # the first return value of the await
+--- @return boolean
+local function isAsyncError(val)
+    return val == ERROR_COROUTINE
+end
 
 -- [[ Start init ]]
 function eventLoop()
@@ -78,12 +100,56 @@ local async_op = async (function (h, r)
     return h / 2, r * 2
 end)
 
+--- test async yield function
+--- @return number
+local async_for_op = async (function ()
+    for i = 1, 4 do
+        coroutine.yield(i)
+    end
+end)
+
+--- test async exception function
+local async_error = async (function()
+    error("thrown error!")
+    return "success apparently?!"
+end)
 
 local test = async (function ()
-    print("test")
+    print("test basic return")
     local v1, v2 = await (async_op)(2, 3)
     print(v1, v2)
+
+    print("now let's count to four !")
+    local await_container = await (async_for_op)
+    local val = await_container()
+    while val ~= nil do
+        print(val)
+        val = await_container()
+    end
+
+    print("and then let's bite the dust...")
+    local r1, e = await (async_error)()
+    if isAsyncError(r1) then
+        -- Equivalent of a 'catch' block
+        r1 = e
+    end
+
+    print(r1)
+
 end)
 
 print("start")
 test()
+
+-- [[ Start the Event Loop for non-TFM environments ]]
+--[[
+function wait(n)
+    -- By geniuses @ https://stackoverflow.com/q/17987618
+    local waiter = io.popen("ping -n " .. tonumber(n+1) .. " localhost > NUL")
+    waiter:close()
+end
+
+while true do
+    wait(1)
+    eventLoop()
+end]]
