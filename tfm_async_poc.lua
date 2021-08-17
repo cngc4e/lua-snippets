@@ -1,4 +1,4 @@
-
+-- [[ Override print to accept varargs in tfm ]]
 local raw_print = print
 
 --- Receives any number of arguments and prints their values to `stdout`, converting each argument to a string following the same rules of [tostring](command:extension.lua.doc?["en-us/52/manual.html/pdf-tostring"]). \
@@ -15,13 +15,12 @@ print = function(...)
     return raw_print(table.concat(segments, "\t"))
 end
 
+-- [[ Async/Await Proof of concept ! ]]
+queue = {}
 
 local function async(fnc)
     local t = {}
-    t.coro = coroutine.create(function(...)
-        print("running coroutine", coroutine.running())
-        coroutine.yield(fnc(...))
-    end)
+    t.coro = coroutine.create(fnc)
     setmetatable(t, {
         __call = function()
             --supposed to schedule to hardbeat, but whatever
@@ -39,7 +38,7 @@ local function await(t, ...)
     end
     local args = {...}
     queue[#queue+1] = function()
-        print("debug coroutiune status", coroutine.status(t.coro))
+        print("debug coroutine status", coroutine.status(t.coro))
         local ret = { coroutine.resume(t.coro, table.unpack(args)) }
         if ret[1] ~= true then
             error("resume routine fail")
@@ -55,7 +54,6 @@ end
 
 
 -- [[ Start init ]]
-queue = {}
 function eventLoop()
     if #queue > 0 then print("q", #queue ) end
     local q = queue
