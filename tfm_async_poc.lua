@@ -57,8 +57,10 @@ local function await(t)
     return function(...)
         local args = {...}
         queue[#queue+1] = function()
-            verbose("debug coroutine status", coroutine.status(t.coro))
+            assert(coroutine.status(t.coro) == "suspended",
+                "Could not resume couroutine that is in state: ", coroutine.status(t.coro))
             local ret = { coroutine.resume(t.coro, table.unpack(args)) }
+            verbose("debug coroutine status", coroutine.status(t.coro))
             if ret[1] ~= true then
                 verbose("try resume after error")
                 --- @type string
@@ -153,15 +155,17 @@ end)
 print("start")
 test()
 
--- [[ Start the Event Loop for non-TFM environments ]]
---[[
-function wait(n)
-    -- By geniuses @ https://stackoverflow.com/q/17987618
-    local waiter = io.popen("ping -n " .. tonumber(n+1) .. " localhost > NUL")
-    waiter:close()
-end
+if not tfm then
+    -- [[ Start the Event Loop for non-TFM environments ]]
+    --[[]]
+    function wait(n)
+        -- By geniuses @ https://stackoverflow.com/q/17987618
+        local waiter = io.popen("ping -n " .. tonumber(n+1) .. " localhost > NUL")
+        waiter:close()
+    end
 
-while true do
-    wait(1)
-    eventLoop()
-end]]
+    while true do
+        wait(1)
+        eventLoop()
+    end
+end
